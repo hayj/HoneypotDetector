@@ -1,0 +1,1 @@
+This tool can recognize honeypot urls using selenium to prevent bot detection.
