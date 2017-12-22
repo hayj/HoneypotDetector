@@ -5,7 +5,6 @@ test
 *.egg-info/
 build/
 dist/
-wm-dist/
 TODO.md
 pip-reinstall.sh
 *.pyc
