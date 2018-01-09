@@ -1,8 +1,5 @@
 # coding: utf-8
 
-# pew in honeypotdetector-venv python /home/hayj/Drive/Workspace/Python/Crawling/HoneypotDetector/honeypotdetector/honeypot.py
-
-
 from systemtools.logger import *
 from datatools.url import *
 from systemtools.basics import *
@@ -10,13 +7,11 @@ from webcrawler.browser import *
 from webcrawler.utils import *
 import re
 from lxml import etree
-from io import StringIO, BytesIO
+# from io import StringIO, BytesIO
 from sklearn import tree
 import urllib.request
 from threading import Lock
 import multiprocessing
-
-
 
 # Data from honeypot.php
 # isBigEnough, hasBigEnoughChild, hasText, isDisplayed, hasDisplayedChild, hasTextPlusNodeRecursive
@@ -145,50 +140,11 @@ def getHoneypotFeatures(link):
         currentX.append(hasDisplayedChild(link))
         currentX.append(hasTextPlusNodeRecursive(link))
         return currentX
-    except Exception as e :
-        logException(e, None)
+    except:
         return [True, False, True, True, False, False]
 
 
-# # Expérimental :
-clf = None
-urlParser = URLParser()
-def isHoneypot(link):
-    try:
-        theArray = clf.predict([getHoneypotFeatures(link)])
-        return theArray[0]
-    except:
-        return False
 
-def parseLinks(data):
-    global urlParser
-    global clf
-#     printLTS(data)
-    (link, domain) = data
-    thisIsAHoneypot = None
-    linkType = None
-    href = None
-#     try:
-    href = link.get_attribute("href")
-    if href == "https://chat.stackoverflow.com/":
-        print(getHoneypotFeatures(link))
-        print(isHoneypot(link))
-    if href is None or href.strip() == "" or href.strip() == "#":
-        linkType = LINK_TYPE.dead
-    elif domain is not None and "http" in href and urlParser.getDomain(href) != domain:
-        linkType = LINK_TYPE.external
-    else:
-        linkType = LINK_TYPE.internal
-    if isHoneypot(link):
-        thisIsAHoneypot = True
-    else:
-        thisIsAHoneypot = False
-#     except Exception as e:
-#         logException(e, None, location="honeypot parseLinks")
-    return (href, thisIsAHoneypot, linkType)
-
-
-LINK_TYPE = Enum("LINK_TYPE", "dead external internal")
 class HoneypotDetector():
     def __init__(self, logger=None, verbose=True):
         self.logger = logger
@@ -203,7 +159,7 @@ class HoneypotDetector():
         except:
             return False
 
-    def getLinks(self, driver, domainOrUrl=None, removeExternal=False):
+    def getLinks(self, driver, domainOrUrl=None):
 
         domain = None
         if domainOrUrl is not None:
@@ -211,38 +167,49 @@ class HoneypotDetector():
                 domain = self.urlParser.getDomain(domainOrUrl)
             else:
                 domain = domainOrUrl
-        else:
-            domain = self.urlParser.getDomain(driver.current_url)
-
-
-        links = driver.find_elements_by_css_selector("a")
-        for i in range(len(links)):
-            links[i] = (links[i], domain)
-        global clf
-        if clf is None:
-            clf = generateDecisionTree()
-
-
-
-        pool = Pool(mapType=MAP_TYPE.sequential)
-        tt = TicToc()
-        tt.tic()
-        labels = list(pool.map(links, parseLinks))
-        tt.toc()
 
         safeLinks = []
-        for (href, isHoneypot, linkType) in labels:
-            if linkType != LINK_TYPE.dead:
-                if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
-                    if not isHoneypot:
-                        safeLinks.append(href)
         honeypotLinks = []
-        for (href, isHoneypot, linkType) in labels:
-            if linkType != LINK_TYPE.dead:
-                if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
-                    if isHoneypot and href not in safeLinks:
-                        honeypotLinks.append(href)
+        linkss = driver.find_elements_by_css_selector("a")
 
+        linkss = chunks(linkss, multiprocessing.cpu_count() * 6)
+        lock = Lock()
+        def parseLinks(links):
+            for link in links:
+                randomStr = getRandomStr()
+                print("Start " + randomStr)
+                try:
+                    href = link.get_attribute("href")
+                    if href is None or href.strip() == "" or href.strip() == "#":
+                        continue
+                    if href in safeLinks:
+                        continue
+                    if domain is not None:
+                        if "http" in href and self.urlParser.getDomain(href) != domain:
+                            continue
+                    if self.isHoneypot(link):
+                        with lock:
+                            honeypotLinks.append(href)
+                    else:
+                        with lock:
+                            safeLinks.append(href)
+                except Exception as e:
+                    logException(e, self, location="honeypot parseLinks")
+                print("End " + randomStr)
+
+#         tp = Pool(mapType=MAP_TYPE.parmap) # best choice is parmap here
+#         tt = TicToc()
+#         tt.tic()
+#         allFeatures = tp.map(all404Files + allOkFiles, self.getFeaturesFromPath)
+#         tt.toc()
+
+        allThreads = []
+        for links in linkss:
+            currentThread = Thread(target=parseLinks, args=(links,))
+            currentThread.start()
+            allThreads.append(currentThread)
+        for currentThread in allThreads:
+            currentThread.join()
         return (list(set(safeLinks)), list(set(honeypotLinks)))
 
 if __name__ == '__main__':
@@ -259,9 +226,9 @@ if __name__ == '__main__':
 
     b = Browser(ajaxSleep=1.0, proxy=getRandomProxy())
     b.get(url)
-
-
 #     printLTS(b.html(url))
+
+
 #     page = urllib.request.urlopen(url)
 #     strToFile(byteToStr(page.read()), rootPath + "/tmp/" + "no-js-no-comments" + ".html")
 #     print(page)
@@ -269,7 +236,7 @@ if __name__ == '__main__':
 
 
     honeypotDetector = HoneypotDetector()
-    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
+    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver)
     printLTS(list(safeLinks))
     printLTS(list(honeypotLinks))
 

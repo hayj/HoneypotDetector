@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# pew in honeypotdetector-venv python /home/hayj/Drive/Workspace/Python/Crawling/HoneypotDetector/honeypotdetector/honeypot.py
+# pew in honeypotdetector-venv python /home/hayj/Drive/Workspace/Python/Crawling/HoneypotDetector/honeypotdetector/honeypot_old2.py
 
 
 from systemtools.logger import *
@@ -12,9 +12,9 @@ import re
 from lxml import etree
 from io import StringIO, BytesIO
 from sklearn import tree
-import urllib.request
-from threading import Lock
-import multiprocessing
+# import urllib.request
+# from threading import Lock
+# import multiprocessing
 
 
 
@@ -135,58 +135,6 @@ def hasDisplayedChild(element):
 
 
 
-def getHoneypotFeatures(link):
-    currentX = []
-    try:
-        currentX.append(isBigEnough(link))
-        currentX.append(hasBigEnoughChild(link))
-        currentX.append(hasText(link))
-        currentX.append(isDisplayed(link))
-        currentX.append(hasDisplayedChild(link))
-        currentX.append(hasTextPlusNodeRecursive(link))
-        return currentX
-    except Exception as e :
-        logException(e, None)
-        return [True, False, True, True, False, False]
-
-
-# # Expérimental :
-clf = None
-urlParser = URLParser()
-def isHoneypot(link):
-    try:
-        theArray = clf.predict([getHoneypotFeatures(link)])
-        return theArray[0]
-    except:
-        return False
-
-def parseLinks(data):
-    global urlParser
-    global clf
-#     printLTS(data)
-    (link, domain) = data
-    thisIsAHoneypot = None
-    linkType = None
-    href = None
-#     try:
-    href = link.get_attribute("href")
-    if href == "https://chat.stackoverflow.com/":
-        print(getHoneypotFeatures(link))
-        print(isHoneypot(link))
-    if href is None or href.strip() == "" or href.strip() == "#":
-        linkType = LINK_TYPE.dead
-    elif domain is not None and "http" in href and urlParser.getDomain(href) != domain:
-        linkType = LINK_TYPE.external
-    else:
-        linkType = LINK_TYPE.internal
-    if isHoneypot(link):
-        thisIsAHoneypot = True
-    else:
-        thisIsAHoneypot = False
-#     except Exception as e:
-#         logException(e, None, location="honeypot parseLinks")
-    return (href, thisIsAHoneypot, linkType)
-
 
 LINK_TYPE = Enum("LINK_TYPE", "dead external internal")
 class HoneypotDetector():
@@ -195,13 +143,28 @@ class HoneypotDetector():
         self.verbose = verbose
         self.clf = generateDecisionTree()
         self.urlParser = URLParser()
+        self.featureCache = CacheDict(self.getHoneypotFeatures, limit=1000)
 
     def isHoneypot(self, link):
         try:
-            theArray = self.clf.predict([getHoneypotFeatures(link)])
+            theArray = self.clf.predict([self.featureCache[link]])
             return theArray[0]
         except:
             return False
+
+    def getHoneypotFeatures(self, link):
+        currentX = []
+        try:
+            currentX.append(isBigEnough(link))
+            currentX.append(hasBigEnoughChild(link))
+            currentX.append(hasText(link))
+            currentX.append(isDisplayed(link))
+            currentX.append(hasDisplayedChild(link))
+            currentX.append(hasTextPlusNodeRecursive(link))
+            return currentX
+        except Exception as e :
+            logException(e, self, location="getHoneypotFeatures")
+            return [True, False, True, True, False, False]
 
     def getLinks(self, driver, domainOrUrl=None, removeExternal=False):
 
@@ -216,31 +179,51 @@ class HoneypotDetector():
 
 
         links = driver.find_elements_by_css_selector("a")
-        for i in range(len(links)):
-            links[i] = (links[i], domain)
-        global clf
-        if clf is None:
-            clf = generateDecisionTree()
 
+        print("-----------")
+        print(links[0])
+        print(links[1])
+        print(links[0] == links[1])
+        print(links[0] == links[0])
+        print("-----------")
 
+        def parseLinks(link):
+            thisIsAHoneypot = None
+            linkType = None
+            href = None
+            try:
+                href = link.get_attribute("href")
+                if href is None or href.strip() == "" or href.strip() == "#":
+                    linkType = LINK_TYPE.dead
+                elif domain is not None and "http" in href and self.urlParser.getDomain(href) != domain:
+                    linkType = LINK_TYPE.external
+                else:
+                    linkType = LINK_TYPE.internal
+                if self.isHoneypot(link):
+                    thisIsAHoneypot = True
+                else:
+                    thisIsAHoneypot = False
+            except Exception as e:
+                logException(e, self, location="honeypot parseLinks")
+            return (href, thisIsAHoneypot, linkType)
 
-        pool = Pool(mapType=MAP_TYPE.sequential)
+        pool = Pool(mapType=MAP_TYPE.builtin)
         tt = TicToc()
         tt.tic()
         labels = list(pool.map(links, parseLinks))
         tt.toc()
 
         safeLinks = []
-        for (href, isHoneypot, linkType) in labels:
+        for (href, thisIsAHoneypot, linkType) in labels:
             if linkType != LINK_TYPE.dead:
                 if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
-                    if not isHoneypot:
+                    if not thisIsAHoneypot:
                         safeLinks.append(href)
         honeypotLinks = []
-        for (href, isHoneypot, linkType) in labels:
+        for (href, thisIsAHoneypot, linkType) in labels:
             if linkType != LINK_TYPE.dead:
                 if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
-                    if isHoneypot and href not in safeLinks:
+                    if thisIsAHoneypot and href not in safeLinks:
                         honeypotLinks.append(href)
 
         return (list(set(safeLinks)), list(set(honeypotLinks)))
@@ -258,7 +241,7 @@ if __name__ == '__main__':
 
 
     b = Browser(ajaxSleep=1.0, proxy=getRandomProxy())
-    b.get(url)
+    b.html(url)
 
 
 #     printLTS(b.html(url))
@@ -269,6 +252,8 @@ if __name__ == '__main__':
 
 
     honeypotDetector = HoneypotDetector()
+    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
+    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
     (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
     printLTS(list(safeLinks))
     printLTS(list(honeypotLinks))
