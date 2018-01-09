@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# pew in honeypotdetector-venv python /home/hayj/Drive/Workspace/Python/Crawling/HoneypotDetector/honeypotdetector/honeypot_old2.py
+# pew in honeypotdetector-venv python /home/hayj/Drive/Workspace/Python/Crawling/HoneypotDetector/honeypotdetector/detector.py
 
 
 from systemtools.logger import *
