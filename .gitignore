@@ -5,6 +5,7 @@ test
 *.egg-info/
 build/
 dist/
+honeypotdetector/trash/
 TODO.md
 pip-reinstall.sh
 *.pyc
