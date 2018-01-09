@@ -6,8 +6,6 @@
 from systemtools.logger import *
 from datatools.url import *
 from systemtools.basics import *
-from webcrawler.browser import *
-from webcrawler.utils import *
 import re
 from lxml import etree
 from io import StringIO, BytesIO
@@ -230,6 +228,8 @@ class HoneypotDetector():
 
 if __name__ == '__main__':
 
+    from webcrawler.browser import *
+    from webcrawler.utils import *
     print("Start")
 
 
