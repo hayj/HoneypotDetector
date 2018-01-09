@@ -2,6 +2,8 @@ test
 
 
 
+local-dependencies.txt
+
 *.egg-info/
 build/
 dist/
