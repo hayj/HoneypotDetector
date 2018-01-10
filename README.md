@@ -17,8 +17,8 @@ This tool can recognize honeypot urls using selenium to prevent bot detection.
 
 	from honeypotdetector.detector import *
 	honeypotDetector = HoneypotDetector()
-	# Get all links on the page (this method take a lot of processing time, depending on the number of links in the page, see below for more informations):
-    (safeHref, honeypotHref) = honeypotDetector.getLinks(seleniumDriver, removeExternal=True)
+	# Get all links on the page (this method takes a lot of processing time, depending on the number of links in the page, see below for more informations):
+    (safeHref, honeypotHref) = honeypotDetector.getHrefs(seleniumDriver, removeExternal=True)
     # Or check a unique link element:
     honeypotDetector.isHoneypot(driver.find_elements_by_css_selector("#id a"))
     # Or check a unique href giving the driver (if this href does not exist on the page, the method will return False (= not a honeypot)):

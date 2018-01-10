@@ -218,9 +218,14 @@ class HoneypotDetector():
             thisIsAHoneypot = self.isHoneypot(link)
         except Exception as e:
             logException(e, self, location="honeypot parseLink")
-        return (href, thisIsAHoneypot, linkType)
+        return (link, href, thisIsAHoneypot, linkType)
 
-    def getLinks(self, driver, domainOrUrl=None, removeExternal=False, cssSelectorHead=""):
+
+    def getLinks(self, *args, **kwargs):
+        kwargs["returnHref"] = False
+        return self.getHrefs(*args, **kwargs)
+
+    def getHrefs(self, driver, domainOrUrl=None, removeExternal=False, cssSelectorHead="", returnHref=True):
         if len(cssSelectorHead) > 0 and cssSelectorHead[-1] != " ":
             cssSelectorHead = cssSelectorHead + " "
         links = driver.find_elements_by_css_selector(cssSelectorHead + "a")
@@ -233,17 +238,23 @@ class HoneypotDetector():
 #         labels = list(pool.map(links, self.parseLink))
 
         safeLinks = []
-        for (href, thisIsAHoneypot, linkType) in labels:
+        for (link, href, thisIsAHoneypot, linkType) in labels:
             if linkType != LINK_TYPE.dead:
                 if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
                     if not thisIsAHoneypot:
-                        safeLinks.append(href)
+                        if returnHref:
+                            safeLinks.append(href)
+                        else:
+                            safeLinks.append(link)
         honeypotLinks = []
-        for (href, thisIsAHoneypot, linkType) in labels:
+        for (link, href, thisIsAHoneypot, linkType) in labels:
             if linkType != LINK_TYPE.dead:
                 if not removeExternal or (removeExternal and linkType != LINK_TYPE.external):
                     if thisIsAHoneypot and href not in safeLinks:
-                        honeypotLinks.append(href)
+                        if returnHref:
+                            honeypotLinks.append(href)
+                        else:
+                            honeypotLinks.append(link)
 
         return (list(set(safeLinks)), list(set(honeypotLinks)))
 
