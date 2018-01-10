@@ -6,7 +6,7 @@
 from systemtools.logger import *
 from datatools.url import *
 from datastructuretools.processing import *
-from datastructuretools.basics import *
+from datastructuretools.hashmap import *
 from systemtools.basics import *
 import re
 from lxml import etree
@@ -143,15 +143,37 @@ class HoneypotDetector():
         self.verbose = verbose
         self.clf = generateDecisionTree()
         self.urlParser = URLParser()
-        self.featureCache = CacheDict(self.getHoneypotFeatures, limit=1000)
+        self.featureCache = SerializableDict(funct=self.getHoneypotFeatures, limit=1000)
 
-    def isHoneypot(self, link):
-        try:
-#             theArray = self.clf.predict([self.featureCache[link]])
-            theArray = self.clf.predict([self.getHoneypotFeatures(link)])
-            return theArray[0]
-        except:
-            return False
+    def getHref(self, link):
+        href = link.get_attribute("href")
+        return self.urlParser.normalize(href)
+
+    def isHoneypot(self, linkOrHref, driver=None):
+        if isinstance(linkOrHref, str):
+            href = self.urlParser.normalize(linkOrHref)
+            links = driver.find_elements_by_css_selector("a")
+            hrefs = list(map(self.getHref, links))
+            hrefIndexes = []
+            for i in range(len(hrefs)):
+                currentHref = hrefs[i]
+                if currentHref == href:
+                    hrefIndexes.append(i)
+            if len(hrefIndexes) == 0:
+                return False
+            for index in hrefIndexes:
+                link = links[index]
+                if not self.isHoneypot(link):
+                    return False
+            return True
+        else:
+            link = linkOrHref
+            try:
+                # theArray = self.clf.predict([self.featureCache[link]])
+                theArray = self.clf.predict([self.getHoneypotFeatures(link)])
+                return theArray[0]
+            except:
+                return False
 
     def getHoneypotFeatures(self, link):
         currentX = []
@@ -167,49 +189,48 @@ class HoneypotDetector():
             logException(e, self, location="getHoneypotFeatures")
             return [True, False, True, True, False, False]
 
-    def getLinks(self, driver, domainOrUrl=None, removeExternal=False, cssSelectorHead=""):
 
+    def getType(self, href, driver=None, domainOrUrl=None):
         domain = None
         if domainOrUrl is not None:
             if "http" in domainOrUrl:
                 domain = self.urlParser.getDomain(domainOrUrl)
             else:
                 domain = domainOrUrl
-        else:
+        elif driver is not None:
             domain = self.urlParser.getDomain(driver.current_url)
+        linkType = None
+        if href is None or href.strip() == "" or href.strip() == "#":
+            linkType = LINK_TYPE.dead
+        elif domain is not None and "http" in href and self.urlParser.getDomain(href) != domain:
+            linkType = LINK_TYPE.external
+        else:
+            linkType = LINK_TYPE.internal
+        return linkType
 
+    def parseLink(self, link, domainOrUrl=None, driver=None):
+        thisIsAHoneypot = None
+        linkType = None
+        href = None
+        try:
+            href = self.getHref(link)
+            linkType = self.getType(href, domainOrUrl=domainOrUrl, driver=driver)
+            thisIsAHoneypot = self.isHoneypot(link)
+        except Exception as e:
+            logException(e, self, location="honeypot parseLink")
+        return (href, thisIsAHoneypot, linkType)
 
-        links = driver.find_elements_by_css_selector(cssSelectorHead + " a")
+    def getLinks(self, driver, domainOrUrl=None, removeExternal=False, cssSelectorHead=""):
+        if len(cssSelectorHead) > 0 and cssSelectorHead[-1] != " ":
+            cssSelectorHead = cssSelectorHead + " "
+        links = driver.find_elements_by_css_selector(cssSelectorHead + "a")
 
-#         print("-----------")
-#         print(links[0])
-#         print(links[1])
-#         print(links[0] == links[1])
-#         print(links[0] == links[0])
-#         print("-----------")
+        labels = []
+        for link in links:
+            labels.append(self.parseLink(link, domainOrUrl=domainOrUrl, driver=driver))
 
-        def parseLinks(link):
-            thisIsAHoneypot = None
-            linkType = None
-            href = None
-            try:
-                href = link.get_attribute("href")
-                if href is None or href.strip() == "" or href.strip() == "#":
-                    linkType = LINK_TYPE.dead
-                elif domain is not None and "http" in href and self.urlParser.getDomain(href) != domain:
-                    linkType = LINK_TYPE.external
-                else:
-                    linkType = LINK_TYPE.internal
-                if self.isHoneypot(link):
-                    thisIsAHoneypot = True
-                else:
-                    thisIsAHoneypot = False
-            except Exception as e:
-                logException(e, self, location="honeypot parseLinks")
-            return (href, thisIsAHoneypot, linkType)
-
-        pool = Pool(mapType=MAP_TYPE.builtin)
-        labels = list(pool.map(links, parseLinks))
+#         pool = Pool(mapType=MAP_TYPE.builtin)
+#         labels = list(pool.map(links, self.parseLink))
 
         safeLinks = []
         for (href, thisIsAHoneypot, linkType) in labels:
