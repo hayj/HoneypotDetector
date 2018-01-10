@@ -5,6 +5,8 @@
 
 from systemtools.logger import *
 from datatools.url import *
+from datastructuretools.processing import *
+from datastructuretools.basics import *
 from systemtools.basics import *
 import re
 from lxml import etree
@@ -178,12 +180,12 @@ class HoneypotDetector():
 
         links = driver.find_elements_by_css_selector("a")
 
-        print("-----------")
-        print(links[0])
-        print(links[1])
-        print(links[0] == links[1])
-        print(links[0] == links[0])
-        print("-----------")
+#         print("-----------")
+#         print(links[0])
+#         print(links[1])
+#         print(links[0] == links[1])
+#         print(links[0] == links[0])
+#         print("-----------")
 
         def parseLinks(link):
             thisIsAHoneypot = None
