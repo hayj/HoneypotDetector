@@ -147,7 +147,8 @@ class HoneypotDetector():
 
     def isHoneypot(self, link):
         try:
-            theArray = self.clf.predict([self.featureCache[link]])
+#             theArray = self.clf.predict([self.featureCache[link]])
+            theArray = self.clf.predict([self.getHoneypotFeatures(link)])
             return theArray[0]
         except:
             return False
@@ -207,11 +208,18 @@ class HoneypotDetector():
                 logException(e, self, location="honeypot parseLinks")
             return (href, thisIsAHoneypot, linkType)
 
-        pool = Pool(mapType=MAP_TYPE.builtin)
-        tt = TicToc()
-        tt.tic()
-        labels = list(pool.map(links, parseLinks))
-        tt.toc()
+        logger = Logger("map-type.log")
+        for current in MAP_TYPE:
+            try:
+                if current != MAP_TYPE.parmap and current != MAP_TYPE.dummy:
+                    pool = Pool(mapType=current) # TODO choose one
+                    tt = TicToc()
+                    log(current.name, logger)
+                    tt.tic()
+                    labels = list(pool.map(links, parseLinks))
+                    tt.toc()
+            except Exception as e:
+                logException(e, self)
 
         safeLinks = []
         for (href, thisIsAHoneypot, linkType) in labels:
@@ -238,11 +246,13 @@ if __name__ == '__main__':
 #     url = "http://localhost/testajax/honeypot.php"
 #     url = "https://www.google.com/search?q=wikipedia"
 #     url = "https://www.google.fr/search?q=pytho+list+prepend"
-    url = "https://www.lequipe.fr/Football/Actualites/Nice-pas-la-meme-histoire/845443"
-    url = "https://stackoverflow.com/questions/38060738/python-copy-element"
+#     url = "https://www.lequipe.fr/Football/Actualites/Nice-pas-la-meme-histoire/845443"
+#     url = "https://stackoverflow.com/questions/38060738/python-copy-element"
+    url = sortedGlob("/home/hayj/Workspace/Python/Datasets/TwitterCrawler/twittercrawler/datatest/*.html")[0]
+    url = "file://" + url
 
-
-    b = Browser(ajaxSleep=1.0, proxy=getRandomProxy())
+#     b = Browser(ajaxSleep=1.0, proxy=getRandomProxy())
+    b = Browser(driverType=DRIVER_TYPE.chrome, ajaxSleep=0.1, proxy=None, headless=False)
     b.html(url)
 
 
@@ -254,8 +264,6 @@ if __name__ == '__main__':
 
 
     honeypotDetector = HoneypotDetector()
-    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
-    (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
     (safeLinks, honeypotLinks) = honeypotDetector.getLinks(b.driver, removeExternal=True)
     printLTS(list(safeLinks))
     printLTS(list(honeypotLinks))
