@@ -1,17 +1,19 @@
-# Description
+# HoneypotDetector
+
+## Description
 
 This tool can recognize honeypot urls using selenium to prevent bot detection.
 
-# Installation
+## Installation
 
     pip install ./wm-dist/*.tar.gz
 
-# Vocabulary
+## Vocabulary
 
  * href : a string url
  * link : a selenium element which is a "a" markup
 
-# Usage
+## Usage
 
 	from honeypotdetector.detector import *
 	honeypotDetector = HoneypotDetector()
@@ -23,7 +25,7 @@ This tool can recognize honeypot urls using selenium to prevent bot detection.
     honeypotDetector.isHoneypot("http://test.com", driver)
 
 
-# Multiprocessing
+## Multiprocessing
 
 At this day we are not able to run the feature extraction on selenium links because selenium drivers (or elements) are not pickable, even with Dill and Pathos.
 
