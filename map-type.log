@@ -1,6 +1,0 @@
-2018-01-10 17:02:45,258 :: INFO :: sequential
-2018-01-10 17:03:45,495 :: INFO :: builtin
-2018-01-10 17:04:58,405 :: INFO :: pathos
-2018-01-10 17:04:58,585 :: INFO :: multiprocessing
-2018-01-10 17:05:00,297 :: INFO :: spark
-2018-01-10 17:05:00,299 :: INFO :: multithreadMap
