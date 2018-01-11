@@ -1,5 +1,8 @@
 test
 
+conf.json
+rsync-all.sh
+
 test/
 
 datatest/
