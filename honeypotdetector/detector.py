@@ -142,7 +142,7 @@ class HoneypotDetector():
         self.logger = logger
         self.verbose = verbose
         self.clf = generateDecisionTree()
-        self.urlParser = URLParser()
+        self.urlParser = URLParser(logger=self.logger, verbose=self.verbose)
         self.featureCache = SerializableDict(funct=self.getHoneypotFeatures, limit=1000)
 
     def getHref(self, link):
