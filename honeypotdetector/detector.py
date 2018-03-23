@@ -43,12 +43,15 @@ data = \
     [True, False, False, False, False, False],
     [True, False, False, False, False, False],
     [False, False, False, False, False, False],
+    [True, True, True, True, True, False], # Added by hand after twitter observation
+    [True, True, True, True, True, True], # Added by hand after twitter observation
 ]
 
 # isHoneypot
 labels = [False, True, False, True, True, True, False,
           True, False, False, True, False, True, True,
-          True, False, True, True, True, True, True]
+          True, False, True, True, True, True, True,
+          False, False]
 
 def generateDecisionTree():
     X = [[0, 0], [1, 1]]
@@ -160,11 +163,16 @@ class HoneypotDetector():
                 if currentHref == href:
                     hrefIndexes.append(i)
             if len(hrefIndexes) == 0:
+                log(linkOrHref + " not found!", self)
                 return False
             for index in hrefIndexes:
                 link = links[index]
                 if not self.isHoneypot(link):
+#                     print(self.getHoneypotFeatures(link))
+                    log(linkOrHref + " is a safe link!", self)
                     return False
+#             print(self.getHoneypotFeatures(link))
+            log(linkOrHref + " is a honeypot!", self)
             return True
         else:
             link = linkOrHref

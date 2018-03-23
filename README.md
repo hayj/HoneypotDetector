@@ -1,12 +1,11 @@
 # HoneypotDetector
 
-## Description
-
 This tool can recognize honeypot urls using selenium to prevent bot detection.
 
 ## Installation
 
-    pip install ./wm-dist/*.tar.gz
+	git clone git@github.com:hayj/HoneypotDetector.git
+	pip install ./HoneypotDetector/wm-dist/*.tar.gz
 
 ## Vocabulary
 
@@ -23,7 +22,7 @@ This tool can recognize honeypot urls using selenium to prevent bot detection.
     # Or check a unique link element:
     honeypotDetector.isHoneypot(seleniumDriver.find_elements_by_css_selector("#id a"))
     # Or check a unique href giving the driver (if this href does not exist on the
-    # page, the method will return False (= not a honeypot)):
+    # page, the method will return False (i.e. not a honeypot)):
     honeypotDetector.isHoneypot("http://test.com", seleniumDriver)
 
 
