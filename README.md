@@ -4,7 +4,7 @@ This tool can recognize honeypot urls using selenium to prevent bot detection.
 
 ## Installation
 
-	git clone git@github.com:hayj/HoneypotDetector.git
+	git clone https://github.com/hayj/HoneypotDetector.git
 	pip install ./HoneypotDetector/wm-dist/*.tar.gz
 
 ## Vocabulary
